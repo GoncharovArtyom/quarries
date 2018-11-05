@@ -2,13 +2,14 @@
 Класс, объединяющий в себе логику работы с графом.
 """
 
+from collections import defaultdict
+from pathlib import Path
+from typing import List, Dict, Tuple, FrozenSet, DefaultDict
+
 import networkx as nx
 import numpy as np
 import shapely.wkt as wkt
 from shapely.geometry import Point, LineString
-from typing import List, Set, Dict, Tuple, FrozenSet, DefaultDict
-from pathlib import Path
-from collections import defaultdict
 
 import utils
 

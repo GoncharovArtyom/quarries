@@ -3,17 +3,12 @@
 
 """Класс, отвечающий за разбиение ребер дорожной сети в зависимости от расположения карьеров."""
 
-import networkx as nx
+from copy import deepcopy
+
 import numpy as np
 
-from collections import defaultdict
-from copy import deepcopy
-from shapely.geometry import Point, LineString
-from typing import Set, Dict, DefaultDict, Tuple, List
-from uuid import UUID, uuid4
-
-from network import Network
 import utils
+from network import Network
 
 
 class EdgesSplitter:
@@ -98,7 +93,7 @@ class EdgesSplitter:
                 self.road_network.quarries_capacities[nearest_quarry] -= required_volume
                 self.road_network.edge_attached_quarry[Network.edge_key(start_vertex, end_vertex)] = nearest_quarry
             else:
-                new_edge_length = utils.find_max_road_length(line, self.road_network.quarries_capacities[nearest_quarry])
+                new_edge_length = utils.find_max_road_length(self.road_network.quarries_capacities[nearest_quarry])
                 start_vertex, new_vertex, end_vertex = self.road_network.split_edge(start_vertex, end_vertex, new_edge_length, from_end=were_vertices_inverted)
 
                 self.road_network.quarries_capacities[nearest_quarry] = 0
@@ -108,4 +103,3 @@ class EdgesSplitter:
                 else:
                     self.road_network.edge_attached_quarry[Network.edge_key(new_vertex, end_vertex)] = nearest_quarry
                     self._construct_edge(start_vertex, new_vertex)
-

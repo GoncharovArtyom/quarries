@@ -1,0 +1,9 @@
+n_of_vertices
+n_of_quarries
+n_of_edges
+vertex_1, vertex_2, ...
+quarry_1 capacity_1
+quarry_2 capacity_2
+...
+vertex_n vertex_m wkt
+vertex_k vertex_l wkt

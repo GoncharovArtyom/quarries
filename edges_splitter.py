@@ -93,7 +93,8 @@ class EdgesSplitter:
             nearest_quarry = start_nearest_quarry
             required_volume = utils.compute_required_volume(line)
 
-            if required_volume < self.road_network.quarries_capacities[nearest_quarry]:
+            if (required_volume < self.road_network.quarries_capacities[nearest_quarry] or
+                    np.isclose(required_volume, self.road_network.quarries_capacities[nearest_quarry])):
                 self.road_network.quarries_capacities[nearest_quarry] -= required_volume
                 self.road_network.edge_attached_quarry[Network.edge_key(start_vertex, end_vertex)] = nearest_quarry
             else:

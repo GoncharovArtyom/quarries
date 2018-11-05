@@ -139,7 +139,7 @@ class Network:
         line = self.edge_to_line_mapping[self.edge_key(start_vertex, end_vertex)]
         length = line.length
 
-        assert length <= new_edge_length, "Длина нового ребра при разбиении больше длины текущего."
+        assert new_edge_length < length, "Длина нового ребра при разбиении больше длины текущего."
 
         split_coeff = new_edge_length / length
         if from_end:
@@ -156,6 +156,7 @@ class Network:
         new_vertex = self.get_available_vertex_id()
 
         self.graph.add_node(new_vertex)
+        self.usual_vertices.add(new_vertex)
         self.vertex_to_point_mapping[new_vertex] = new_point
 
         self.graph.add_edge(start_vertex, new_vertex, weight=length * split_coeff)
@@ -221,7 +222,9 @@ class Network:
 
             quarries_capacities = dict()
             for _ in range(n_of_quarries):
-                vertex, capacity = map(int, f.readline().split())
+                vertex, capacity = f.readline().split()
+                vertex = int(vertex)
+                capacity = float(capacity)
                 quarries_capacities[vertex] = capacity
 
             incidence_list = []

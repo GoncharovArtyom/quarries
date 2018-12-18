@@ -12,6 +12,7 @@ import shapely.wkt as wkt
 from shapely.geometry import Point, LineString
 
 import utils
+from utils import edge_key
 
 
 class Network:
@@ -46,8 +47,8 @@ class Network:
         self.edge_to_line_mapping = dict()
         for u, v, line in incidence_list:
             self.graph.add_edge(u, v, weight=line.length)
-            self.first_poit_vertex[self.edge_key(u, v)] = u
-            self.last_point_vertex[self.edge_key(u, v)] = v
+            self.first_poit_vertex[edge_key(u, v)] = u
+            self.last_point_vertex[edge_key(u, v)] = v
 
             if u in self.vertex_to_point_mapping:
                 utils.assert_points_are_close(self.vertex_to_point_mapping[u], Point(line.coords[0]))
@@ -57,11 +58,15 @@ class Network:
                 utils.assert_points_are_close(self.vertex_to_point_mapping[v], Point(line.coords[-1]))
             self.vertex_to_point_mapping[v] = Point(line.coords[-1])
 
-            self.edge_to_line_mapping[self.edge_key(u, v)] = line
+            self.edge_to_line_mapping[edge_key(u, v)] = line
 
         self.edge_attached_quarry: Dict[FrozenSet[int], int] = dict()
         self.distances_to_quarries: DefaultDict[int, Dict[int, float]] = defaultdict(dict)
         self.second_vertex_in_path: DefaultDict[int, Dict[int, float]] = defaultdict(dict)
+
+        self.original_edge = dict()
+        for u, v in self.graph.edges:
+            self.original_edge[edge_key(u, v)] = edge_key(u, v)
 
     def get_available_vertex_id(self):
         """
@@ -137,22 +142,23 @@ class Network:
         :return:
         """
 
-        line = self.edge_to_line_mapping[self.edge_key(start_vertex, end_vertex)]
+        line = self.edge_to_line_mapping[edge_key(start_vertex, end_vertex)]
+        if from_end:
+            line = LineString(reversed(line.coords))
+
         length = line.length
 
         assert new_edge_length < length, "Длина нового ребра при разбиении больше длины текущего."
 
         split_coeff = new_edge_length / length
-        if from_end:
-            split_coeff = 1 - split_coeff
 
         new_point = line.interpolate(split_coeff, normalized=True)
         start_line, end_line = utils.split_line_string_by_point(line, new_point)
 
         self.graph.remove_edge(start_vertex, end_vertex)
-        del self.edge_to_line_mapping[self.edge_key(start_vertex, end_vertex)]
-        del self.first_poit_vertex[self.edge_key(start_vertex, end_vertex)]
-        del self.last_point_vertex[self.edge_key(start_vertex, end_vertex)]
+        del self.edge_to_line_mapping[edge_key(start_vertex, end_vertex)]
+        del self.first_poit_vertex[edge_key(start_vertex, end_vertex)]
+        del self.last_point_vertex[edge_key(start_vertex, end_vertex)]
 
         new_vertex = self.get_available_vertex_id()
 
@@ -162,14 +168,18 @@ class Network:
 
         self.graph.add_edge(start_vertex, new_vertex, weight=length * split_coeff)
         self.graph.add_edge(new_vertex, end_vertex, weight=length * (1 - split_coeff))
-        self.first_poit_vertex[self.edge_key(start_vertex, new_vertex)] = start_vertex
-        self.first_poit_vertex[self.edge_key(new_vertex, end_vertex)] = new_vertex
-        self.last_point_vertex[self.edge_key(start_vertex, new_vertex)] = new_vertex
-        self.last_point_vertex[self.edge_key(new_vertex, end_vertex)] = end_vertex
-        self.edge_to_line_mapping[self.edge_key(start_vertex, new_vertex)] = start_line
-        self.edge_to_line_mapping[self.edge_key(new_vertex, end_vertex)] = end_line
+        self.first_poit_vertex[edge_key(start_vertex, new_vertex)] = start_vertex
+        self.first_poit_vertex[edge_key(new_vertex, end_vertex)] = new_vertex
+        self.last_point_vertex[edge_key(start_vertex, new_vertex)] = new_vertex
+        self.last_point_vertex[edge_key(new_vertex, end_vertex)] = end_vertex
+        self.edge_to_line_mapping[edge_key(start_vertex, new_vertex)] = start_line
+        self.edge_to_line_mapping[edge_key(new_vertex, end_vertex)] = end_line
 
         self._recompute_paths(start_vertex, end_vertex, new_vertex)
+
+        self.original_edge[edge_key(start_vertex, new_vertex)] = self.original_edge[edge_key(start_vertex, end_vertex)]
+        self.original_edge[edge_key(new_vertex, end_vertex)] = self.original_edge[edge_key(start_vertex, end_vertex)]
+        del self.original_edge[edge_key(start_vertex, end_vertex)]
 
         return start_vertex, new_vertex, end_vertex
 
@@ -236,15 +246,3 @@ class Network:
                 incidence_list.append((u, v, line))
 
         return cls(vertices, quarries_capacities, incidence_list)
-
-    @staticmethod
-    def edge_key(u: int, v: int) -> FrozenSet[int]:
-        """
-        Значение, которое может быть использовано в качестве ключа для ребра. Порядок вершин не важен.
-
-        :param u:
-        :param v:
-        :return:
-        """
-
-        return frozenset((u, v))
